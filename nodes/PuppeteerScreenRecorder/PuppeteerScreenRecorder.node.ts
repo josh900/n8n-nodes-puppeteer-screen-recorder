@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { PuppeteerScreenRecorder } from 'puppeteer-screen-recorder';
+import { INodeExecutionData, INodeType, INodeTypeDescription, IBinaryData } from 'n8n-workflow';
+import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
 import puppeteer from 'puppeteer';
 
 export class PuppeteerScreenRecorder implements INodeType {
@@ -95,12 +95,12 @@ export class PuppeteerScreenRecorder implements INodeType {
       const page = await browser.newPage();
       await page.setViewport({ width, height });
 
-      const recorder = new PuppeteerScreenRecorder(page, {
+      const recorder = new Recorder(page);
+      await recorder.start(outputFilename, {
         fps: frameRate,
         videoFrame: { width, height },
       });
 
-      await recorder.start(outputFilename);
       await page.goto(url, { waitUntil: 'networkidle0' });
 
       await new Promise((resolve) => setTimeout(resolve, duration * 1000));
@@ -113,8 +113,8 @@ export class PuppeteerScreenRecorder implements INodeType {
         json: {},
         binary: {
           data: binaryData,
-          mimeType: 'video/mp4',
-          fileName: outputFilename,
+          mimeType: 'video/mp4' as unknown as IBinaryData,
+          fileName: outputFilename as unknown as IBinaryData,
         },
       });
     }
