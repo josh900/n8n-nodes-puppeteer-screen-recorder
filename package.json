@@ -1,50 +1,36 @@
 {
   "name": "n8n-nodes-puppeteer-screen-recorder",
-  "version": "0.1.0",
-  "description": "n8n-nodes-puppeteer-screen-recorder",
+  "version": "1.0.0",
+  "description": "n8n node for recording websites using Puppeteer and puppeteer-screen-recorder",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "lint": "tslint -p tsconfig.json -c tslint.json",
+    "prepublishOnly": "npm run build"
+  },
   "keywords": [
     "n8n-community-node-package"
   ],
+  "author": "",
   "license": "MIT",
-  "homepage": "",
-  "author": {
-    "name": "murra178",
-    "email": "murra178@gmail.com"
+  "devDependencies": {
+    "@types/node": "^14.14.36",
+    "prettier": "^2.2.1",
+    "tslint": "^6.1.3",
+    "typescript": "^4.2.3"
   },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/josh900/n8n-nodes-puppeteer-screen-recorder.git"
+  "dependencies": {
+    "n8n-core": "~0.125.0",
+    "n8n-workflow": "~0.107.0",
+    "puppeteer": "^13.7.0",
+    "puppeteer-screen-recorder": "^2.0.2"
   },
-  "main": "index.js",
-  "scripts": {
-    "build": "tsc && gulp build:icons",
-    "dev": "tsc --watch",
-    "format": "prettier nodes credentials --write",
-    "lint": "eslint nodes credentials package.json",
-    "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes credentials package.json"
-  },
-  "files": [
-    "dist"
-  ],
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "credentials": [
-      "dist/credentials/ExampleCredentialsApi.credentials.js"
-    ],
-    "nodes": [
-      "dist/nodes/ExampleNode/ExampleNode.node.js"
-    ]
-  },
-  "devDependencies": {
-    "@typescript-eslint/parser": "~5.45",
-    "eslint-plugin-n8n-nodes-base": "^1.11.0",
-    "gulp": "^4.0.2",
-    "n8n-workflow": "*",
-    "prettier": "^2.7.1",
-    "typescript": "~4.8.4"
-  },
-  "peerDependencies": {
-    "n8n-workflow": "*"
+    "nodes": {
+      "PuppeteerScreenRecorder": "dist/nodes/PuppeteerScreenRecorder.node.js"
+    }
   }
 }
