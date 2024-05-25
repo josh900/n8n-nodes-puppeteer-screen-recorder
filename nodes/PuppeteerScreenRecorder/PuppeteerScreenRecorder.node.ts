@@ -1,11 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-  INodeExecutionData,
-  INodeType,
-  INodeTypeDescription,
-} from 'n8n-workflow';
-import puppeteer, { Browser, Page } from 'puppeteer';
+import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { PuppeteerScreenRecorder } from 'puppeteer-screen-recorder';
+import puppeteer from 'puppeteer';
 
 export class PuppeteerScreenRecorder implements INodeType {
   description: INodeTypeDescription = {
@@ -14,7 +10,7 @@ export class PuppeteerScreenRecorder implements INodeType {
     icon: 'file:puppeteer.svg',
     group: ['transform'],
     version: 1,
-    description: 'Record a website using Puppeteer',
+    description: 'Record website screens using Puppeteer and Puppeteer Screen Recorder',
     defaults: {
       name: 'Puppeteer Screen Recorder',
     },
@@ -25,20 +21,28 @@ export class PuppeteerScreenRecorder implements INodeType {
         displayName: 'URL',
         name: 'url',
         type: 'string',
-        required: true,
         default: '',
+        required: true,
         description: 'The URL of the website to record',
       },
       {
-        displayName: 'Duration',
-        name: 'duration',
-        type: 'number',
+        displayName: 'Output File Name',
+        name: 'outputFilename',
+        type: 'string',
+        default: 'recording.mp4',
         required: true,
-        default: 5,
-        description: 'The duration of the recording in seconds',
+        description: 'The name of the output file for the screen recording',
       },
       {
-        displayName: 'Resolution',
+        displayName: 'Recording Duration',
+        name: 'duration',
+        type: 'number',
+        default: 5,
+        required: true,
+        description: 'The duration of the screen recording in seconds',
+      },
+      {
+        displayName: 'Recording Resolution',
         name: 'resolution',
         type: 'options',
         options: [
@@ -50,17 +54,26 @@ export class PuppeteerScreenRecorder implements INodeType {
             name: '1920x1080',
             value: '1920x1080',
           },
+          {
+            name: '2560x1440',
+            value: '2560x1440',
+          },
+          {
+            name: '3840x2160',
+            value: '3840x2160',
+          },
         ],
         default: '1280x720',
-        description: 'The resolution of the recording',
+        required: true,
+        description: 'The resolution of the screen recording',
       },
       {
-        displayName: 'File Name',
-        name: 'fileName',
-        type: 'string',
+        displayName: 'Frame Rate',
+        name: 'frameRate',
+        type: 'number',
+        default: 30,
         required: true,
-        default: 'recording.webm',
-        description: 'The file name to save the recording as',
+        description: 'The frame rate of the screen recording',
       },
     ],
   };
@@ -71,35 +84,37 @@ export class PuppeteerScreenRecorder implements INodeType {
 
     for (let i = 0; i < items.length; i++) {
       const url = this.getNodeParameter('url', i) as string;
+      const outputFilename = this.getNodeParameter('outputFilename', i) as string;
       const duration = this.getNodeParameter('duration', i) as number;
       const resolution = this.getNodeParameter('resolution', i) as string;
-      const fileName = this.getNodeParameter('fileName', i) as string;
-
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-      const page = await browser.newPage();
+      const frameRate = this.getNodeParameter('frameRate', i) as number;
 
       const [width, height] = resolution.split('x').map(Number);
+
+      const browser = await puppeteer.launch();
+      const page = await browser.newPage();
       await page.setViewport({ width, height });
 
-      const recorder = new PuppeteerScreenRecorder(page);
-      await recorder.start();
+      const recorder = new PuppeteerScreenRecorder(page, {
+        fps: frameRate,
+        videoFrame: { width, height },
+      });
 
+      await recorder.start(outputFilename);
       await page.goto(url, { waitUntil: 'networkidle0' });
-      await page.waitForTimeout(duration * 1000);
 
-      const videoBuffer = await recorder.stop();
+      await new Promise((resolve) => setTimeout(resolve, duration * 1000));
 
+      await recorder.stop();
       await browser.close();
 
-      const data = await this.helpers.prepareBinaryData(videoBuffer, fileName);
-
+      const binaryData = await this.helpers.readBinaryFile(outputFilename);
       returnData.push({
         json: {},
         binary: {
-          data,
+          data: binaryData,
+          mimeType: 'video/mp4',
+          fileName: outputFilename,
         },
       });
     }
