@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-puppeteer-screen-recorder",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "n8n node to record screen using Puppeteer",
   "keywords": [
     "n8n-community-node-package"
