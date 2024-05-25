@@ -1,10 +1,10 @@
 import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { PuppeteerScreenRecorder as ScreenRecorder } from 'puppeteer-screen-recorder';
 import puppeteer, { Browser, Page } from 'puppeteer';
 
 export class PuppeteerScreenRecorder implements INodeType {
     description: INodeTypeDescription = {
+
         displayName: 'Puppeteer Screen Recorder',
         name: 'puppeteerScreenRecorder',
         icon: 'file:puppeteer.svg',
@@ -56,8 +56,8 @@ export class PuppeteerScreenRecorder implements INodeType {
         const items = this.getInputData();
         const returnData: INodeExecutionData[] = [];
 
-        let browser: Browser;
-        let page: Page;
+        let browser: Browser | undefined;
+        let page: Page | undefined;
 
         try {
             browser = await puppeteer.launch();
@@ -66,19 +66,22 @@ export class PuppeteerScreenRecorder implements INodeType {
             for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
                 const url = this.getNodeParameter('url', itemIndex, '') as string;
                 const duration = this.getNodeParameter('duration', itemIndex, 5) as number;
-                const fileName = this.getNodeParameter('fileName', itemIndex, 'recording.mp4') as string;
+                const fileName = this.getNodeParameter('fileName', itemIndex, 'recording.webm') as string;
                 const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex, 'data') as string;
 
-                const recorder = new ScreenRecorder(page);
-
-                await recorder.start(fileName);
-
                 await page.goto(url, { waitUntil: 'networkidle0' });
+
+                const outputDir = `/tmp/recordings/${itemIndex}`;
+                await page._client.send('Page.startScreencast', {
+                    outputDir,
+                    format: 'webm',
+                });
+
                 await new Promise((resolve) => setTimeout(resolve, duration * 1000));
 
-                await recorder.stop();
+                await page._client.send('Page.stopScreencast');
 
-                const recordingBuffer = await recorder.getRecording();
+                const recordingBuffer = await this.helpers.readFile(`${outputDir}/screencast.webm`);
                 const data = await this.helpers.prepareBinaryData(recordingBuffer, fileName);
 
                 returnData.push({
@@ -87,6 +90,8 @@ export class PuppeteerScreenRecorder implements INodeType {
                         [binaryProperty]: data,
                     },
                 });
+
+                await this.helpers.rmDir(outputDir, true);
             }
         } catch (error) {
             if (this.continueOnFail()) {
