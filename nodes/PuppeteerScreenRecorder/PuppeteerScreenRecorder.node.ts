@@ -6,6 +6,7 @@ import {
 } from 'n8n-workflow';
 import * as puppeteer from 'puppeteer';
 import { PuppeteerScreenRecorder } from 'puppeteer-screen-recorder';
+import * as fs from 'fs';
 
 export class PuppeteerScreenRecorderNode implements INodeType {
   description: INodeTypeDescription = {
@@ -45,7 +46,7 @@ export class PuppeteerScreenRecorderNode implements INodeType {
         default: 1280,
         description: 'The width of the recording resolution',
       },
-      {  
+      {
         displayName: 'Resolution Height',
         name: 'resolutionHeight',
         type: 'number',
@@ -56,13 +57,10 @@ export class PuppeteerScreenRecorderNode implements INodeType {
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
     const items = this.getInputData();
-
     const returnData: INodeExecutionData[] = [];
 
     for (let i = 0; i < items.length; i++) {
-
       const url = this.getNodeParameter('url', i) as string;
       const fileName = this.getNodeParameter('fileName', i) as string;
       const resolutionWidth = this.getNodeParameter('resolutionWidth', i) as number;
@@ -83,29 +81,28 @@ export class PuppeteerScreenRecorderNode implements INodeType {
         followNewTab: true,
         fps: 60,
         videoFrame: {
-          width: resolutionWidth, 
+          width: resolutionWidth,
           height: resolutionHeight,
         },
         aspectRatio: `${resolutionWidth}:${resolutionHeight}`,
       });
-      
+
       await recorder.start(fileName);
-
       await page.goto(url, { waitUntil: 'networkidle0' });
-
       await recorder.stop();
-
       await browser.close();
 
-      const outputFile = await this.helpers.prepareBinaryData(Buffer.from(recorder.currentStream.path), fileName);
+      const outputFile = await this.helpers.prepareBinaryData(
+        Buffer.from(fs.readFileSync(fileName)),
+        fileName
+      );
 
       returnData.push({
         json: {},
         binary: {
           recording: outputFile,
-        }
+        },
       });
-
     }
 
     return this.prepareOutputData(returnData);
