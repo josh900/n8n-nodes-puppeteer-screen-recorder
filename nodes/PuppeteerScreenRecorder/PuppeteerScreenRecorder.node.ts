@@ -1,103 +1,109 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
+  INodeExecutionData,
+  INodeType,
+  INodeTypeDescription,
 } from 'n8n-workflow';
+import puppeteer, { Browser, Page } from 'puppeteer';
 import { PuppeteerScreenRecorder } from 'puppeteer-screen-recorder';
-import puppeteer from 'puppeteer';
 
 export class PuppeteerScreenRecorder implements INodeType {
-	description: INodeTypeDescription = {
-		displayName: 'Puppeteer Screen Recorder',
-		name: 'puppeteerScreenRecorder',
-		icon: 'file:puppeteer.svg',
-		group: ['transform'],
-		version: 1,
-		description: 'Record a website screen using Puppeteer',
-		defaults: {
-			name: 'Puppeteer Screen Recorder',
-		},
-		inputs: ['main'],
-		outputs: ['main'],
-		properties: [
-			{
-				displayName: 'URL',
-				name: 'url',
-				type: 'string',
-				required: true,
-				default: '',
-				placeholder: 'https://example.com',
-				description: 'The URL of the website to record',
-			},
-			{
-				displayName: 'Duration',
-				name: 'duration',
-				type: 'number',
-				required: true,
-				default: 5,
-				description: 'The recording duration in seconds',
-			},
-			{
-				displayName: 'Width',
-				name: 'width',
-				type: 'number',
-				default: 1280,
-				description: 'The width of the recording resolution',
-			},
-			{
-				displayName: 'Height',  
-				name: 'height',
-				type: 'number',
-				default: 720,
-				description: 'The height of the recording resolution',
-			},
-			{
-				displayName: 'File Name',
-				name: 'fileName',
-				type: 'string',
-				default: 'recording.webm',
-				description: 'The file name to save the recording as',
-			},
-		],
-	};
+  description: INodeTypeDescription = {
+    displayName: 'Puppeteer Screen Recorder',
+    name: 'puppeteerScreenRecorder',
+    icon: 'file:puppeteer.svg',
+    group: ['transform'],
+    version: 1,
+    description: 'Record a website using Puppeteer',
+    defaults: {
+      name: 'Puppeteer Screen Recorder',
+    },
+    inputs: ['main'],
+    outputs: ['main'],
+    properties: [
+      {
+        displayName: 'URL',
+        name: 'url',
+        type: 'string',
+        required: true,
+        default: '',
+        description: 'The URL of the website to record',
+      },
+      {
+        displayName: 'Duration',
+        name: 'duration',
+        type: 'number',
+        required: true,
+        default: 5,
+        description: 'The duration of the recording in seconds',
+      },
+      {
+        displayName: 'Resolution',
+        name: 'resolution',
+        type: 'options',
+        options: [
+          {
+            name: '1280x720',
+            value: '1280x720',
+          },
+          {
+            name: '1920x1080',
+            value: '1920x1080',
+          },
+        ],
+        default: '1280x720',
+        description: 'The resolution of the recording',
+      },
+      {
+        displayName: 'File Name',
+        name: 'fileName',
+        type: 'string',
+        required: true,
+        default: 'recording.webm',
+        description: 'The file name to save the recording as',
+      },
+    ],
+  };
 
-	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
-		const returnData: INodeExecutionData[] = [];
+  async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+    const items = this.getInputData();
+    const returnData: INodeExecutionData[] = [];
 
-		for (let i = 0; i < items.length; i++) {
-			const url = this.getNodeParameter('url', i) as string;
-			const duration = this.getNodeParameter('duration', i) as number;
-			const width = this.getNodeParameter('width', i) as number;
-			const height = this.getNodeParameter('height', i) as number;
-			const fileName = this.getNodeParameter('fileName', i) as string;
+    for (let i = 0; i < items.length; i++) {
+      const url = this.getNodeParameter('url', i) as string;
+      const duration = this.getNodeParameter('duration', i) as number;
+      const resolution = this.getNodeParameter('resolution', i) as string;
+      const fileName = this.getNodeParameter('fileName', i) as string;
 
-			const browser = await puppeteer.launch();  
-			const page = await browser.newPage();
-			await page.setViewport({ width, height });
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
+      const page = await browser.newPage();
 
-			const recorder = new PuppeteerScreenRecorder(page);
+      const [width, height] = resolution.split('x').map(Number);
+      await page.setViewport({ width, height });
 
-			await recorder.start(fileName);  
-			await page.goto(url, { waitUntil: 'networkidle0' }); 
-			await new Promise(resolve => setTimeout(resolve, duration * 1000));
-			await recorder.stop();
+      const recorder = new PuppeteerScreenRecorder(page);
+      await recorder.start();
 
-			const videoBuffer = await recorder.getRecording();
+      await page.goto(url, { waitUntil: 'networkidle0' });
+      await page.waitForTimeout(duration * 1000);
 
-			await browser.close();
+      const videoBuffer = await recorder.stop();
 
-			const data = await this.helpers.prepareBinaryData(videoBuffer, fileName);
+      await browser.close();
 
-			returnData.push({
-				json: {},
-				binary: {
-					data,
-				},
-			});
-		}
+      const data = await this.helpers.prepareBinaryData(videoBuffer, fileName);
 
-		return this.prepareOutputData(returnData);
-	}
+      returnData.push({
+        json: {},
+        binary: {
+          data,
+        },
+      });
+    }
+
+    return this.prepareOutputData(returnData);
+  }
 }
