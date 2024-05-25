@@ -78,7 +78,8 @@ export class PuppeteerScreenRecorder implements INodeType {
 
                 await recorder.stop();
 
-                const data = await this.helpers.prepareBinaryData(Buffer.from(await recorder.download()), fileName);
+                const recordingBuffer = await recorder.getRecording();
+                const data = await this.helpers.prepareBinaryData(recordingBuffer, fileName);
 
                 returnData.push({
                     json: {},
@@ -96,6 +97,10 @@ export class PuppeteerScreenRecorder implements INodeType {
                 });
             } else {
                 throw error;
+            }
+        } finally {
+            if (browser) {
+                await browser.close();
             }
         }
 
