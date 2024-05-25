@@ -1,6 +1,6 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import puppeteer, { Browser, Page } from 'puppeteer';
+import puppeteer from 'puppeteer';
 
 export class PuppeteerScreenRecorder implements INodeType {
   description: INodeTypeDescription = {
@@ -92,7 +92,7 @@ export class PuppeteerScreenRecorder implements INodeType {
 
       await page.goto(url, { waitUntil: 'networkidle0' });
 
-      await page.evaluate(async (duration) => {
+      const recordingBlob = await page.evaluate(async (duration) => {
         const stream = await (navigator.mediaDevices as any).getDisplayMedia({
           video: true,
           audio: false,
@@ -104,10 +104,9 @@ export class PuppeteerScreenRecorder implements INodeType {
         await new Promise((resolve) => setTimeout(resolve, duration * 1000));
         recorder.stop();
         await new Promise((resolve) => recorder.onstop = resolve);
-        (window as any).recordingBlob = new Blob(chunks, { type: 'video/webm' });
+        return new Blob(chunks, { type: 'video/webm' });
       }, duration);
 
-      const recordingBlob = await page.evaluate(() => (window as any).recordingBlob);
       const recordingBuffer = await recordingBlob.arrayBuffer();
 
       await browser.close();
