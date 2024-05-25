@@ -1,6 +1,8 @@
 import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import puppeteer, { Browser, Page } from 'puppeteer';
+import { readFile, unlink } from 'fs/promises';
+import { join } from 'path';
 
 export class PuppeteerScreenRecorder implements INodeType {
     description: INodeTypeDescription = {
@@ -72,16 +74,35 @@ export class PuppeteerScreenRecorder implements INodeType {
                 await page.goto(url, { waitUntil: 'networkidle0' });
 
                 const outputDir = `/tmp/recordings/${itemIndex}`;
-                await page._client.send('Page.startScreencast', {
-                    outputDir,
-                    format: 'webm',
-                });
+                const recordingPath = join(outputDir, 'recording.webm');
+
+                await page.evaluate(async (outputFile) => {
+                    const stream = await (navigator.mediaDevices as any).getDisplayMedia({ video: true });
+                    const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                    const chunks: Blob[] = [];
+                    recorder.ondataavailable = (event) => chunks.push(event.data);
+                    recorder.start();
+                    (globalThis as any).recorderStop = () => {
+                        recorder.stop();
+                        return new Promise<void>((resolve) => {
+                            recorder.onstop = () => {
+                                const blob = new Blob(chunks, { type: 'video/webm' });
+                                const reader = new FileReader();
+                                reader.onload = () => {
+                                    const buffer = Buffer.from(reader.result as ArrayBuffer);
+                                    (globalThis as any).require('fs').writeFileSync(outputFile, buffer);
+                                    resolve();
+                                };
+                                reader.readAsArrayBuffer(blob);
+                            };
+                        });
+                    };
+                }, recordingPath);
 
                 await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+                await page.evaluate(() => (globalThis as any).recorderStop());
 
-                await page._client.send('Page.stopScreencast');
-
-                const recordingBuffer = await this.helpers.readFile(`${outputDir}/screencast.webm`);
+                const recordingBuffer = await readFile(recordingPath);
                 const data = await this.helpers.prepareBinaryData(recordingBuffer, fileName);
 
                 returnData.push({
@@ -91,7 +112,7 @@ export class PuppeteerScreenRecorder implements INodeType {
                     },
                 });
 
-                await this.helpers.rmDir(outputDir, true);
+                await unlink(recordingPath);
             }
         } catch (error) {
             if (this.continueOnFail()) {
