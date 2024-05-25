@@ -83,7 +83,7 @@ export class PuppeteerScreenRecorder implements INodeType {
       const [width, height] = resolution.split('x').map(Number);
 
       const browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
         args: ['--window-size=1920,1080'],
       });
 
@@ -92,26 +92,18 @@ export class PuppeteerScreenRecorder implements INodeType {
 
       await page.goto(url, { waitUntil: 'networkidle0' });
 
-      const recordingBlob = await page.evaluate(async (duration) => {
-        const stream = await (navigator.mediaDevices as any).getDisplayMedia({
-          video: true,
-          audio: false,
-        });
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        const chunks: Blob[] = [];
-        recorder.ondataavailable = (e: any) => chunks.push(e.data);
-        recorder.start();
-        await new Promise((resolve) => setTimeout(resolve, duration * 1000));
-        recorder.stop();
-        await new Promise((resolve) => recorder.onstop = resolve);
-        return new Blob(chunks, { type: 'video/webm' });
-      }, duration);
+      const recordingPath = `/tmp/${fileName}`;
+      await page.startScreencast({ path: recordingPath });
 
-      const recordingBuffer = await recordingBlob.arrayBuffer();
+      await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+
+      await page.stopScreencast();
 
       await browser.close();
 
-      const data = await this.helpers.prepareBinaryData(Buffer.from(recordingBuffer), fileName);
+      const recordingBuffer = await this.helpers.getBinaryDataBuffer(recordingPath);
+
+      const data = await this.helpers.prepareBinaryData(recordingBuffer, fileName);
 
       returnData.push({
         json: {},
