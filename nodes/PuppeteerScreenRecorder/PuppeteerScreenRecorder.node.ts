@@ -1,11 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-  INodeExecutionData,
-  INodeType,
-  INodeTypeDescription,
-} from 'n8n-workflow';
-import puppeteer, { Page } from 'puppeteer';
-import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
+import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { PuppeteerScreenRecorder } from 'puppeteer-screen-recorder';
+import puppeteer from 'puppeteer';
 
 export class PuppeteerScreenRecorder implements INodeType {
   description: INodeTypeDescription = {
@@ -14,7 +10,7 @@ export class PuppeteerScreenRecorder implements INodeType {
     icon: 'file:puppeteer.svg',
     group: ['transform'],
     version: 1,
-    description: 'Record a website using Puppeteer and puppeteer-screen-recorder',
+    description: 'Record a website screen using Puppeteer',
     defaults: {
       name: 'Puppeteer Screen Recorder',
     },
@@ -26,23 +22,43 @@ export class PuppeteerScreenRecorder implements INodeType {
         name: 'url',
         type: 'string',
         default: '',
-        required: true,
         placeholder: 'https://example.com',
-        description: 'The URL of the website to record',
+        required: true,
+      },
+      {
+        displayName: 'Duration (seconds)',
+        name: 'duration',
+        type: 'number',
+        default: 5,
+        required: true,
       },
       {
         displayName: 'Width',
         name: 'width',
         type: 'number',
         default: 1280,
-        description: 'The width of the recording resolution',
+        required: true,
       },
       {
         displayName: 'Height',
         name: 'height',
         type: 'number',
         default: 720,
-        description: 'The height of the recording resolution',
+        required: true,
+      },
+      {
+        displayName: 'File Name',
+        name: 'fileName',
+        type: 'string',
+        default: 'recording.mp4',
+        required: true,
+      },
+      {
+        displayName: 'Binary Property',
+        name: 'binaryProperty',
+        type: 'string',
+        default: 'data',
+        required: true,
       },
     ],
   };
@@ -51,33 +67,38 @@ export class PuppeteerScreenRecorder implements INodeType {
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
 
-    for (let i = 0; i < items.length; i++) {
-      const url = this.getNodeParameter('url', i) as string;
-      const width = this.getNodeParameter('width', i) as number;
-      const height = this.getNodeParameter('height', i) as number;
+    for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+      const url = this.getNodeParameter('url', itemIndex, '') as string;
+      const duration = this.getNodeParameter('duration', itemIndex, 5) as number;
+      const width = this.getNodeParameter('width', itemIndex, 1280) as number;
+      const height = this.getNodeParameter('height', itemIndex, 720) as number;
+      const fileName = this.getNodeParameter('fileName', itemIndex, 'recording.mp4') as string;
+      const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex, 'data') as string;
 
-      const browser = await puppeteer.launch();
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
       const page = await browser.newPage();
       await page.setViewport({ width, height });
 
-      const recorder = new Recorder(page as Page);
-      await recorder.start();
+      const recorder = new PuppeteerScreenRecorder(page);
+      await recorder.start(fileName);
 
       await page.goto(url, { waitUntil: 'networkidle0' });
+      await new Promise((resolve) => setTimeout(resolve, duration * 1000));
 
-      const videoBuffer = await recorder.stop();
+      await recorder.stop();
+      const recordingBuffer = await recorder.getRecording();
 
       await browser.close();
 
-      const binaryData = await this.helpers.prepareBinaryData(
-        videoBuffer,
-        'video.webm'
-      );
+      const data = await this.helpers.prepareBinaryData(recordingBuffer, fileName);
 
       returnData.push({
         json: {},
         binary: {
-          data: binaryData,
+          [binaryProperty]: data,
         },
       });
     }
