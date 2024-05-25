@@ -4,9 +4,10 @@ import {
   INodeType,
   INodeTypeDescription,
 } from 'n8n-workflow';
+import * as puppeteer from 'puppeteer';
 import { PuppeteerScreenRecorder } from 'puppeteer-screen-recorder';
 
-export class PuppeteerScreenRecorder implements INodeType {
+export class PuppeteerScreenRecorderNode implements INodeType {
   description: INodeTypeDescription = {
     displayName: 'Puppeteer Screen Recorder',
     name: 'puppeteerScreenRecorder',
@@ -67,7 +68,18 @@ export class PuppeteerScreenRecorder implements INodeType {
       const resolutionWidth = this.getNodeParameter('resolutionWidth', i) as number;
       const resolutionHeight = this.getNodeParameter('resolutionHeight', i) as number;
 
-      const recorder = new PuppeteerScreenRecorder({
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox'],
+      });
+
+      const page = await browser.newPage();
+      await page.setViewport({
+        width: resolutionWidth,
+        height: resolutionHeight,
+      });
+
+      const recorder = new PuppeteerScreenRecorder(page, {
         followNewTab: true,
         fps: 60,
         videoFrame: {
@@ -79,13 +91,16 @@ export class PuppeteerScreenRecorder implements INodeType {
       
       await recorder.start(fileName);
 
-      await recorder.page.goto(url, { waitUntil: 'networkidle0' });
+      await page.goto(url, { waitUntil: 'networkidle0' });
 
       await recorder.stop();
 
-      const outputFile = await this.helpers.prepareBinaryData(Buffer.from(recorder.video), fileName);
+      await browser.close();
+
+      const outputFile = await this.helpers.prepareBinaryData(Buffer.from(recorder.currentStream.path), fileName);
 
       returnData.push({
+        json: {},
         binary: {
           recording: outputFile,
         }
