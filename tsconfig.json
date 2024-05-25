@@ -13,6 +13,6 @@
 	  "outDir": "./dist",
 	  "sourceMap": true
 	},
-	"include": ["nodes/**/*"],
-	"exclude": ["node_modules"]
+	"include": ["nodes/**/*", "credentials/**/*"],
+	"exclude": ["node_modules", "dist"]
   }

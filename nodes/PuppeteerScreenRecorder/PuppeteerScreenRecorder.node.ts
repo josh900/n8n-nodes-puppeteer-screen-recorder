@@ -4,8 +4,8 @@ import {
   INodeType,
   INodeTypeDescription,
 } from 'n8n-workflow';
-import puppeteer from 'puppeteer';
-import { PuppeteerScreenRecorder } from 'puppeteer-screen-recorder';
+import puppeteer, { Page } from 'puppeteer';
+import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
 
 export class PuppeteerScreenRecorder implements INodeType {
   description: INodeTypeDescription = {
@@ -60,7 +60,7 @@ export class PuppeteerScreenRecorder implements INodeType {
       const page = await browser.newPage();
       await page.setViewport({ width, height });
 
-      const recorder = new PuppeteerScreenRecorder(page);
+      const recorder = new Recorder(page as Page);
       await recorder.start();
 
       await page.goto(url, { waitUntil: 'networkidle0' });
