@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { PuppeteerScreenRecorder as ScreenRecorder } from 'puppeteer-screen-recorder';
+import puppeteer, { Browser, Page } from 'puppeteer';
 
 export class PuppeteerScreenRecorder implements INodeType {
     description: INodeTypeDescription = {
@@ -55,33 +56,47 @@ export class PuppeteerScreenRecorder implements INodeType {
         const items = this.getInputData();
         const returnData: INodeExecutionData[] = [];
 
-        for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-            const url = this.getNodeParameter('url', itemIndex, '') as string;
-            const duration = this.getNodeParameter('duration', itemIndex, 5) as number;
-            const fileName = this.getNodeParameter('fileName', itemIndex, 'recording.mp4') as string;
-            const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex, 'data') as string;
+        let browser: Browser;
+        let page: Page;
 
-            const recorder = new ScreenRecorder();
+        try {
+            browser = await puppeteer.launch();
+            page = await browser.newPage();
 
-            await recorder.start();
-            await recorder.setRecordingPath(fileName);
+            for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+                const url = this.getNodeParameter('url', itemIndex, '') as string;
+                const duration = this.getNodeParameter('duration', itemIndex, 5) as number;
+                const fileName = this.getNodeParameter('fileName', itemIndex, 'recording.mp4') as string;
+                const binaryProperty = this.getNodeParameter('binaryProperty', itemIndex, 'data') as string;
 
-            await recorder.goTo(url, { waitUntil: 'networkidle0' });
-            await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+                const recorder = new ScreenRecorder(page);
 
-            await recorder.stop();
-            const recordingBuffer = await recorder.getRecording();
+                await recorder.start(fileName);
 
-            await recorder.close();
+                await page.goto(url, { waitUntil: 'networkidle0' });
+                await new Promise((resolve) => setTimeout(resolve, duration * 1000));
 
-            const data = await this.helpers.prepareBinaryData(recordingBuffer, fileName);
+                await recorder.stop();
 
-            returnData.push({
-                json: {},
-                binary: {
-                    [binaryProperty]: data,
-                },
-            });
+                const data = await this.helpers.prepareBinaryData(Buffer.from(await recorder.download()), fileName);
+
+                returnData.push({
+                    json: {},
+                    binary: {
+                        [binaryProperty]: data,
+                    },
+                });
+            }
+        } catch (error) {
+            if (this.continueOnFail()) {
+                returnData.push({
+                    json: {
+                        error: error.message,
+                    },
+                });
+            } else {
+                throw error;
+            }
         }
 
         return this.prepareOutputData(returnData);
