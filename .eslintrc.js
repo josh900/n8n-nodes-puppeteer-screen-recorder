@@ -22,6 +22,7 @@ module.exports = {
 
   overrides: [
     {
+      files: [],
       plugins: ['eslint-plugin-n8n-nodes-base'],
       extends: ['plugin:n8n-nodes-base/community'],
       rules: {
