@@ -13,6 +13,6 @@
 	  "outDir": "./dist",
 	  "sourceMap": true
 	},
-	"include": ["nodes/**/*","nodes/**/*.json","package.json"],
+	"include": ["nodes/**/*","nodes/**/*.json"],
 	"exclude": ["node_modules", "dist"]
   }
