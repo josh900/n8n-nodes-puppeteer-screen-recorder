@@ -1,0 +1,13 @@
+{
+    "node": "n8n-nodes-base.puppeteerScreenRecorder",
+    "nodeVersion": "1.0",
+    "codexVersion": "1.0",
+    "categories": ["Utility"],
+    "resources": {
+      "primaryDocumentation": [
+        {
+          "url": ""
+        }
+      ]
+    }
+  }
