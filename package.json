@@ -6,21 +6,21 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "format": "prettier nodes credentials --write",
-    "lint": "eslint nodes credentials package.json",
-    "lintfix": "eslint nodes credentials package.json --fix",
-    "prepublishOnly": "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes package.json"
+    "format": "prettier nodes  --write",
+    "lint": "eslint nodes package.json",
+    "lintfix": "eslint nodes package.json --fix",
+    "prepublishOnly": "npm run build && npm run lint -c .eslintrc.prepublish.js nodes package.json"
   },
   "keywords": [
     "n8n-community-node-package"
   ],
   "author": {
-    "name": "Your Name",
-    "email": "your@email.com"
+    "name": "Josh Murray",
+    "email": "murra178@gmail.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/n8n-nodes-puppeteer-screen-recorder.git"
+    "url": "https://github.com/josh900/n8n-nodes-puppeteer-screen-recorder.git"
   },
   "license": "MIT",
   "dependencies": {
@@ -41,8 +41,8 @@
   },
   "n8n": {
     "n8nNodesApiVersion": 1,
-    "nodes": {
-      "PuppeteerScreenRecorder": "dist/nodes/PuppeteerScreenRecorder/PuppeteerScreenRecorder.node.js"
-    }
+    "nodes": [
+      "dist/nodes/PuppeteerScreenRecorder/PuppeteerScreenRecorder.node.js"
+    ]
   }
 }
