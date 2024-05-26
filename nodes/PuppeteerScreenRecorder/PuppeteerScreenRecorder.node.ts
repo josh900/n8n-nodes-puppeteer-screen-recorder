@@ -97,9 +97,7 @@ export class PuppeteerScreenRecorder implements INodeType {
 
       await browser.close();
 
-      const videoData = Buffer.from(videoBuffer);
-
-      const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
+      const binaryData = await this.helpers.prepareBinaryData(videoBuffer, outputFileName);
 
       returnData.push({
         json: {},
