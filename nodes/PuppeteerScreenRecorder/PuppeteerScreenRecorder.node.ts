@@ -2,7 +2,6 @@ import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
 import puppeteer from 'puppeteer';
-import { BinaryDataManager } from 'n8n-workflow';
 
 export class PuppeteerScreenRecorder implements INodeType {
   description: INodeTypeDescription = {
@@ -98,8 +97,7 @@ export class PuppeteerScreenRecorder implements INodeType {
 
       await browser.close();
 
-      const binaryDataManager = new BinaryDataManager(this.helpers.getBinaryDataManager());
-      const binaryData = await binaryDataManager.setBinaryData(outputFileName, videoBuffer, 'video/mp4');
+      const binaryData = await this.helpers.prepareBinaryData(videoBuffer, outputFileName);
 
       returnData.push({
         json: {},
