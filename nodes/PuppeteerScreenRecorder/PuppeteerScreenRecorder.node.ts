@@ -1,9 +1,5 @@
-import { IExecuteFunctions } from 'n8n-core';
-import {
-  INodeExecutionData,
-  INodeType,
-  INodeTypeDescription,
-} from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-workflow';
+import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
 import puppeteer from 'puppeteer';
 
@@ -28,76 +24,89 @@ export class PuppeteerScreenRecorder implements INodeType {
         default: '',
         required: true,
         placeholder: 'https://example.com',
+        description: 'The URL of the website to record',
       },
       {
         displayName: 'Width',
         name: 'width',
         type: 'number',
         default: 1280,
-        required: true,
+        description: 'The width of the recording viewport',
       },
       {
         displayName: 'Height',
         name: 'height',
         type: 'number',
         default: 720,
-        required: true,
+        description: 'The height of the recording viewport',
+      },
+      {
+        displayName: 'Duration',
+        name: 'duration',
+        type: 'number',
+        default: 5,
+        description: 'The duration of the recording in seconds',
+      },
+      {
+        displayName: 'Frame Rate',
+        name: 'frameRate',
+        type: 'number',
+        default: 25,
+        description: 'The frame rate of the recording',
       },
       {
         displayName: 'Output File Name',
         name: 'outputFileName',
         type: 'string',
         default: 'recording.mp4',
-        required: true,
+        description: 'The name of the output file',
       },
     ],
   };
 
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    const url = this.getNodeParameter('url', 0) as string;
-    const width = this.getNodeParameter('width', 0) as number;
-    const height = this.getNodeParameter('height', 0) as number;
-    const outputFileName = this.getNodeParameter('outputFileName', 0) as string;
+    const items = this.getInputData();
+    const returnData: INodeExecutionData[] = [];
 
-    const browser = await puppeteer.launch({
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    });
+    for (let i = 0; i < items.length; i++) {
+      const url = this.getNodeParameter('url', i) as string;
+      const width = this.getNodeParameter('width', i) as number;
+      const height = this.getNodeParameter('height', i) as number;
+      const duration = this.getNodeParameter('duration', i) as number;
+      const frameRate = this.getNodeParameter('frameRate', i) as number;
+      const outputFileName = this.getNodeParameter('outputFileName', i) as string;
 
-    const page = await browser.newPage();
-    await page.setViewport({ width, height });
+      const browser = await puppeteer.launch({
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
 
-    const recorder = new Recorder(page, {
-      fps: 30,
-      videoFrame: { width, height },
-    });
+      const page = await browser.newPage();
+      await page.setViewport({ width, height });
 
-    try {
-      await recorder.start();
+      const recorder = new Recorder(page, {
+        fps: frameRate,
+        videoFrame: { width, height },
+      });
+
+      await recorder.start(outputFileName);
       await page.goto(url, { waitUntil: 'networkidle0' });
-      await recorder.stop();
+      await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+      const videoBuffer = await recorder.stop();
 
-      const videoBuffer = await recorder.getRecording();
-
-      const data = await this.helpers.prepareBinaryData(
-        videoBuffer as Buffer,
-        outputFileName
-      );
-
-      return [
-        [
-          {
-            json: {},
-            binary: { data },
-          },
-        ],
-      ];
-    } catch (error) {
-      console.error('Error:', error);
-      throw error;
-    } finally {
       await browser.close();
+
+      const binaryData = await this.helpers.prepareBinaryData(videoBuffer, outputFileName);
+
+      returnData.push({
+        json: {},
+        binary: {
+          data: binaryData,
+        },
+      });
     }
+
+    return this.prepareOutputData(returnData);
   }
 }
