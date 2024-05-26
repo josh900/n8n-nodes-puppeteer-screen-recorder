@@ -77,6 +77,14 @@ export class PuppeteerScreenRecorder implements INodeType {
       const frameRate = this.getNodeParameter('frameRate', i) as number;
       const outputFileName = this.getNodeParameter('outputFileName', i) as string;
 
+      console.log('Input parameters:');
+      console.log('URL:', url);
+      console.log('Width:', width);
+      console.log('Height:', height);
+      console.log('Duration:', duration);
+      console.log('Frame Rate:', frameRate);
+      console.log('Output File Name:', outputFileName);
+
       const browser = await puppeteer.launch({
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
         headless: true,
@@ -92,16 +100,20 @@ export class PuppeteerScreenRecorder implements INodeType {
       });
 
       const outputPath = path.join('/tmp', outputFileName);
+      console.log('Output Path:', outputPath);
+
       await recorder.start(outputPath);
       await page.goto(url, { waitUntil: 'networkidle0' });
       await new Promise((resolve) => setTimeout(resolve, duration * 1000));
       await recorder.stop();
 
       const videoData = await this.helpers.readBinaryFile(outputPath);
+      console.log('Video Data:', videoData);
 
       await browser.close();
 
       const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
+      console.log('Binary Data:', binaryData);
 
       returnData.push({
         json: {},
