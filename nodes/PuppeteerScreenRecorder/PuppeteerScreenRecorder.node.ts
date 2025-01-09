@@ -72,7 +72,7 @@ export class PuppeteerScreenRecorder implements INodeType {
 
     for (let i = 0; i < items.length; i++) {
       try {
-        this.logger.info(`Starting execution for item ${i}`);
+        console.log(`Starting execution for item ${i}`);
 
         const url = this.getNodeParameter('url', i) as string;
         const width = this.getNodeParameter('width', i) as number;
@@ -81,45 +81,45 @@ export class PuppeteerScreenRecorder implements INodeType {
         const frameRate = this.getNodeParameter('frameRate', i) as number;
         const outputFileName = this.getNodeParameter('outputFileName', i) as string;
 
-        this.logger.debug('Parameters:', { url, width, height, duration, frameRate, outputFileName });
+        console.log('Parameters:', { url, width, height, duration, frameRate, outputFileName });
 
-        this.logger.info('Launching browser...');
+        console.log('Launching browser...');
         const browser = await puppeteer.launch({
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
           headless: true,
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
 
-        this.logger.info('Creating new page...');
+        console.log('Creating new page...');
         const page = await browser.newPage();
         await page.setViewport({ width, height });
 
-        this.logger.info('Initializing recorder...');
+        console.log('Initializing recorder...');
         const recorder = new Recorder(page, {
           fps: frameRate,
           videoFrame: { width, height },
         });
 
         const outputPath = path.join('/tmp', outputFileName);
-        this.logger.info(`Starting recording to ${outputPath}`);
+        console.log(`Starting recording to ${outputPath}`);
         await recorder.start(outputPath);
 
-        this.logger.info(`Navigating to ${url}`);
+        console.log(`Navigating to ${url}`);
         await page.goto(url, { waitUntil: 'networkidle0' });
 
-        this.logger.info(`Waiting for ${duration} seconds...`);
+        console.log(`Waiting for ${duration} seconds...`);
         await new Promise((resolve) => setTimeout(resolve, duration * 1000));
 
-        this.logger.info('Stopping recording...');
+        console.log('Stopping recording...');
         await recorder.stop();
 
-        this.logger.info('Closing browser...');
+        console.log('Closing browser...');
         await browser.close();
 
-        this.logger.info('Reading recorded file...');
+        console.log('Reading recorded file...');
         const videoData = fs.readFileSync(outputPath);
         
-        this.logger.info('Preparing binary data...');
+        console.log('Preparing binary data...');
         const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
 
         returnData.push({
@@ -129,10 +129,10 @@ export class PuppeteerScreenRecorder implements INodeType {
           },
         });
 
-        this.logger.info(`Successfully processed item ${i}`);
+        console.log(`Successfully processed item ${i}`);
 
       } catch (error) {
-        this.logger.error(`Error processing item ${i}:`, error);
+        console.error(`Error processing item ${i}:`, error);
         throw error;
       }
     }
