@@ -73,7 +73,10 @@ export class PuppeteerScreenRecorder implements INodeType {
 
     for (let i = 0; i < items.length; i++) {
       try {
-        Logger.info('PuppeteerScreenRecorder', `Starting execution for item ${i}`);
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: `Starting execution for item ${i}`
+        });
 
         const url = this.getNodeParameter('url', i) as string;
         const width = this.getNodeParameter('width', i) as number;
@@ -82,45 +85,89 @@ export class PuppeteerScreenRecorder implements INodeType {
         const frameRate = this.getNodeParameter('frameRate', i) as number;
         const outputFileName = this.getNodeParameter('outputFileName', i) as string;
 
-        Logger.debug('PuppeteerScreenRecorder', 'Parameters:', { url, width, height, duration, frameRate, outputFileName });
+        Logger.debug({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Parameters',
+          parameters: { url, width, height, duration, frameRate, outputFileName }
+        });
 
-        Logger.info('PuppeteerScreenRecorder', 'Launching browser...');
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Launching browser'
+        });
+
         const browser = await puppeteer.launch({
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
           headless: true,
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
 
-        Logger.info('PuppeteerScreenRecorder', 'Creating new page...');
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Creating new page'
+        });
+
         const page = await browser.newPage();
         await page.setViewport({ width, height });
 
-        Logger.info('PuppeteerScreenRecorder', 'Initializing recorder...');
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Initializing recorder'
+        });
+
         const recorder = new Recorder(page, {
           fps: frameRate,
           videoFrame: { width, height },
         });
 
         const outputPath = path.join('/tmp', outputFileName);
-        Logger.info('PuppeteerScreenRecorder', `Starting recording to ${outputPath}`);
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: `Starting recording to ${outputPath}`
+        });
+
         await recorder.start(outputPath);
 
-        Logger.info('PuppeteerScreenRecorder', `Navigating to ${url}`);
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: `Navigating to ${url}`
+        });
+
         await page.goto(url, { waitUntil: 'networkidle0' });
 
-        Logger.info('PuppeteerScreenRecorder', `Waiting for ${duration} seconds...`);
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: `Waiting for ${duration} seconds`
+        });
+
         await new Promise((resolve) => setTimeout(resolve, duration * 1000));
 
-        Logger.info('PuppeteerScreenRecorder', 'Stopping recording...');
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Stopping recording'
+        });
+
         await recorder.stop();
 
-        Logger.info('PuppeteerScreenRecorder', 'Closing browser...');
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Closing browser'
+        });
+
         await browser.close();
 
-        Logger.info('PuppeteerScreenRecorder', 'Reading recorded file...');
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Reading recorded file'
+        });
+
         const videoData = fs.readFileSync(outputPath);
         
-        Logger.info('PuppeteerScreenRecorder', 'Preparing binary data...');
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: 'Preparing binary data'
+        });
+
         const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
 
         returnData.push({
@@ -130,10 +177,17 @@ export class PuppeteerScreenRecorder implements INodeType {
           },
         });
 
-        Logger.info('PuppeteerScreenRecorder', `Successfully processed item ${i}`);
+        Logger.info({
+          source: 'PuppeteerScreenRecorder',
+          message: `Successfully processed item ${i}`
+        });
 
       } catch (error) {
-        Logger.error('PuppeteerScreenRecorder', `Error processing item ${i}:`, error);
+        Logger.error({
+          source: 'PuppeteerScreenRecorder',
+          message: `Error processing item ${i}`,
+          error
+        });
         throw error;
       }
     }
