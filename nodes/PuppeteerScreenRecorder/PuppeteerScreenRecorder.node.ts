@@ -71,44 +71,70 @@ export class PuppeteerScreenRecorder implements INodeType {
     const returnData: INodeExecutionData[] = [];
 
     for (let i = 0; i < items.length; i++) {
-      const url = this.getNodeParameter('url', i) as string;
-      const width = this.getNodeParameter('width', i) as number;
-      const height = this.getNodeParameter('height', i) as number;
-      const duration = this.getNodeParameter('duration', i) as number;
-      const frameRate = this.getNodeParameter('frameRate', i) as number;
-      const outputFileName = this.getNodeParameter('outputFileName', i) as string;
+      try {
+        this.logger.info(`Starting execution for item ${i}`);
 
-      const browser = await puppeteer.launch({
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
+        const url = this.getNodeParameter('url', i) as string;
+        const width = this.getNodeParameter('width', i) as number;
+        const height = this.getNodeParameter('height', i) as number;
+        const duration = this.getNodeParameter('duration', i) as number;
+        const frameRate = this.getNodeParameter('frameRate', i) as number;
+        const outputFileName = this.getNodeParameter('outputFileName', i) as string;
 
-      const page = await browser.newPage();
-      await page.setViewport({ width, height });
+        this.logger.debug('Parameters:', { url, width, height, duration, frameRate, outputFileName });
 
-      const recorder = new Recorder(page, {
-        fps: frameRate,
-        videoFrame: { width, height },
-      });
+        this.logger.info('Launching browser...');
+        const browser = await puppeteer.launch({
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        });
 
-      const outputPath = path.join('/tmp', outputFileName);
-      await recorder.start(outputPath);
-      await page.goto(url, { waitUntil: 'networkidle0' });
-      await new Promise((resolve) => setTimeout(resolve, duration * 1000));
-      await recorder.stop();
+        this.logger.info('Creating new page...');
+        const page = await browser.newPage();
+        await page.setViewport({ width, height });
 
-      await browser.close();
+        this.logger.info('Initializing recorder...');
+        const recorder = new Recorder(page, {
+          fps: frameRate,
+          videoFrame: { width, height },
+        });
 
-      const videoData = fs.readFileSync(outputPath);
-      const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
+        const outputPath = path.join('/tmp', outputFileName);
+        this.logger.info(`Starting recording to ${outputPath}`);
+        await recorder.start(outputPath);
 
-      returnData.push({
-        json: {},
-        binary: {
-          data: binaryData,
-        },
-      });
+        this.logger.info(`Navigating to ${url}`);
+        await page.goto(url, { waitUntil: 'networkidle0' });
+
+        this.logger.info(`Waiting for ${duration} seconds...`);
+        await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+
+        this.logger.info('Stopping recording...');
+        await recorder.stop();
+
+        this.logger.info('Closing browser...');
+        await browser.close();
+
+        this.logger.info('Reading recorded file...');
+        const videoData = fs.readFileSync(outputPath);
+        
+        this.logger.info('Preparing binary data...');
+        const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
+
+        returnData.push({
+          json: {},
+          binary: {
+            data: binaryData,
+          },
+        });
+
+        this.logger.info(`Successfully processed item ${i}`);
+
+      } catch (error) {
+        this.logger.error(`Error processing item ${i}:`, error);
+        throw error;
+      }
     }
 
     return this.prepareOutputData(returnData);
