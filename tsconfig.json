@@ -4,15 +4,17 @@
 	  "module": "commonjs",
 	  "moduleResolution": "node",
 	  "target": "es2019",
-	  "lib": ["es2019", "es2020"],
+	  "lib": ["es2019", "es2020", "DOM"],
 	  "removeComments": true,
 	  "noImplicitAny": true,
 	  "esModuleInterop": true,
 	  "resolveJsonModule": true,
 	  "declaration": true,
 	  "outDir": "./dist",
-	  "sourceMap": true
+	  "sourceMap": true,
+	  "skipLibCheck": true,
+	  "forceConsistentCasingInFileNames": true
 	},
-        "include": ["nodes/**/*", "nodes/**/*.json", "package.json"],
+        "include": ["nodes/**/*", "nodes/**/*.json"],
 	"exclude": ["node_modules", "dist"]
   }
