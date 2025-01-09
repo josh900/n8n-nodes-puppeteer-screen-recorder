@@ -69,87 +69,47 @@ export class PuppeteerScreenRecorder implements INodeType {
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
-    
-    this.logger.info('Starting PuppeteerScreenRecorder execution');
-    const startTime = Date.now();
 
     for (let i = 0; i < items.length; i++) {
-      try {
-        this.logger.debug(`Processing item ${i + 1} of ${items.length}`);
-        
-        const url = this.getNodeParameter('url', i) as string;
-        const width = this.getNodeParameter('width', i) as number;
-        const height = this.getNodeParameter('height', i) as number;
-        const duration = this.getNodeParameter('duration', i) as number;
-        const frameRate = this.getNodeParameter('frameRate', i) as number;
-        const outputFileName = this.getNodeParameter('outputFileName', i) as string;
+      const url = this.getNodeParameter('url', i) as string;
+      const width = this.getNodeParameter('width', i) as number;
+      const height = this.getNodeParameter('height', i) as number;
+      const duration = this.getNodeParameter('duration', i) as number;
+      const frameRate = this.getNodeParameter('frameRate', i) as number;
+      const outputFileName = this.getNodeParameter('outputFileName', i) as string;
 
-        this.logger.debug(
-          `Parameters: URL=${url}, dimensions=${width}x${height}, duration=${duration}s, frameRate=${frameRate}, output=${outputFileName}`
-        );
+      const browser = await puppeteer.launch({
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      });
 
-        this.logger.info('Launching browser');
-        const browser = await puppeteer.launch({
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox'],
-        });
+      const page = await browser.newPage();
+      await page.setViewport({ width, height });
 
-        this.logger.debug('Creating new page');
-        const page = await browser.newPage();
-        await page.setViewport({ width, height });
+      const recorder = new Recorder(page, {
+        fps: frameRate,
+        videoFrame: { width, height },
+      });
 
-        this.logger.info('Initializing recorder');
-        const recorder = new Recorder(page, {
-          fps: frameRate,
-          videoFrame: { width, height },
-        });
+      const outputPath = path.join('/tmp', outputFileName);
+      await recorder.start(outputPath);
+      await page.goto(url, { waitUntil: 'networkidle0' });
+      await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+      await recorder.stop();
 
-        const outputPath = path.join('/tmp', outputFileName);
-        this.logger.debug(`Output path: ${outputPath}`);
+      await browser.close();
 
-        this.logger.info('Starting recording');
-        await recorder.start(outputPath);
+      const videoData = fs.readFileSync(outputPath);
+      const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
 
-        this.logger.debug(`Navigating to URL: ${url}`);
-        await page.goto(url, { waitUntil: 'networkidle0' });
-        
-        this.logger.info(`Recording for ${duration} seconds`);
-        await new Promise((resolve) => {
-          const timeout = setTimeout(() => {
-            this.logger.debug('Recording duration completed');
-            resolve(true);
-            clearTimeout(timeout);
-          }, duration * 1000);
-        });
-
-        this.logger.info('Stopping recording');
-        await recorder.stop();
-
-        this.logger.debug('Closing browser');
-        await browser.close();
-
-        this.logger.info('Reading recorded file');
-        const videoData = fs.readFileSync(outputPath);
-        const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
-
-        returnData.push({
-          json: {},
-          binary: {
-            data: binaryData,
-          },
-        });
-
-        this.logger.debug(`Successfully processed item ${i + 1}`);
-
-      } catch (error) {
-        this.logger.error(`Error processing item ${i + 1}: ${error.message}`);
-        throw error;
-      }
+      returnData.push({
+        json: {},
+        binary: {
+          data: binaryData,
+        },
+      });
     }
-
-    const duration = Date.now() - startTime;
-    this.logger.info(`PuppeteerScreenRecorder execution completed in ${duration}ms`);
 
     return this.prepareOutputData(returnData);
   }
