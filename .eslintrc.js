@@ -16,9 +16,16 @@ module.exports = {
     project: ['./tsconfig.json'],
     sourceType: 'module',
     extraFileExtensions: ['.json'],
+    tsconfigRootDir: __dirname
   },
 
-  ignorePatterns: ['.eslintrc.js', '**/*.js', '**/node_modules/**', '**/dist/**'],
+  ignorePatterns: [
+    '.eslintrc.js',
+    '**/*.js',
+    '**/node_modules/**',
+    '**/dist/**',
+    'package-lock.json'
+  ],
 
   overrides: [
     {
