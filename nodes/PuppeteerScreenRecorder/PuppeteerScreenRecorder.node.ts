@@ -133,7 +133,7 @@ export class PuppeteerScreenRecorder implements INodeType {
         Logger.info(`[PuppeteerScreenRecorder] Successfully processed item ${i}`);
 
       } catch (error) {
-        Logger.error(`[PuppeteerScreenRecorder] Error processing item ${i}: ${error}`);
+        Logger.error(`[PuppeteerScreenRecorder] Error processing item ${i}: ${error instanceof Error ? error.message : String(error)}`);
         throw error;
       }
     }
