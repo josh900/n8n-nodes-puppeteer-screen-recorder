@@ -105,7 +105,7 @@ export class PuppeteerScreenRecorder implements INodeType {
         Logger.info('[PuppeteerScreenRecorder] Launching browser');
         browser = await puppeteer.launch({
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-          headless: true,
+          headless: "new",
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
         });
 
