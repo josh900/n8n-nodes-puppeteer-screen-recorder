@@ -30,32 +30,48 @@ export class PuppeteerScreenRecorder implements INodeType {
     outputs: ['main'] as unknown as NodeConnectionType[],
     properties: [
       {
+        displayName: 'Mode',
+        name: 'mode',
+        type: 'options',
+        default: 'video',
+        options: [
+          { name: 'Video Recording', value: 'video' },
+          { name: 'Screenshot', value: 'screenshot' }
+        ],
+        description: 'Whether to record a video or take a screenshot',
+      },
+      {
         displayName: 'URL',
         name: 'url',
         type: 'string',
         default: '',
         required: true,
         placeholder: 'https://example.com',
-        description: 'The URL of the website to record',
+        description: 'The URL of the website to record/capture',
       },
       {
         displayName: 'Width',
         name: 'width',
         type: 'number',
         default: 1280,
-        description: 'The width of the recording viewport',
+        description: 'The width of the viewport',
       },
       {
-        displayName: 'Height',
+        displayName: 'Height', 
         name: 'height',
         type: 'number',
         default: 720,
-        description: 'The height of the recording viewport',
+        description: 'The height of the viewport',
       },
       {
         displayName: 'Duration',
         name: 'duration',
         type: 'number',
+        displayOptions: {
+          show: {
+            mode: ['video']
+          }
+        },
         default: 5,
         description: 'The duration of the recording in seconds',
       },
@@ -63,15 +79,49 @@ export class PuppeteerScreenRecorder implements INodeType {
         displayName: 'Frame Rate',
         name: 'frameRate',
         type: 'number',
+        displayOptions: {
+          show: {
+            mode: ['video']
+          }
+        },
         default: 25,
         description: 'The frame rate of the recording',
+      },
+      {
+        displayName: 'Image Format',
+        name: 'imageFormat',
+        type: 'options',
+        displayOptions: {
+          show: {
+            mode: ['screenshot']
+          }
+        },
+        options: [
+          { name: 'PNG', value: 'png' },
+          { name: 'JPEG', value: 'jpeg' },
+          { name: 'WEBP', value: 'webp' }
+        ],
+        default: 'png',
+        description: 'The format of the screenshot image',
+      },
+      {
+        displayName: 'Full Page',
+        name: 'fullPage',
+        type: 'boolean',
+        displayOptions: {
+          show: {
+            mode: ['screenshot']
+          }
+        },
+        default: false,
+        description: 'Whether to take a screenshot of the full scrollable page',
       },
       {
         displayName: 'Output File Name',
         name: 'outputFileName',
         type: 'string',
-        default: 'recording.mp4',
-        description: 'The name of the output file',
+        default: '',
+        description: 'The name of the output file. If empty, will use timestamp',
       },
       {
         displayName: 'Video Format',
@@ -127,18 +177,10 @@ export class PuppeteerScreenRecorder implements INodeType {
       };
 
       try {
+        const mode = this.getNodeParameter('mode', i) as string;
         const url = this.getNodeParameter('url', i) as string;
         const width = this.getNodeParameter('width', i) as number;
         const height = this.getNodeParameter('height', i) as number;
-        const duration = this.getNodeParameter('duration', i) as number;
-        const frameRate = this.getNodeParameter('frameRate', i) as number;
-        const videoFormat = this.getNodeParameter('videoFormat', i) as string;
-        const videoQuality = this.getNodeParameter('videoQuality', i) as number;
-        const followNewTab = this.getNodeParameter('followNewTab', i) as boolean;
-
-        const outputFileName = `${this.getNodeParameter('outputFileName', i)}`.endsWith(`.${videoFormat}`) 
-          ? this.getNodeParameter('outputFileName', i) as string
-          : `${this.getNodeParameter('outputFileName', i)}.${videoFormat}`;
 
         const launchOptions: PuppeteerLaunchOptions = {
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
@@ -154,54 +196,106 @@ export class PuppeteerScreenRecorder implements INodeType {
         browser = await puppeteer.launch(launchOptions);
         const page = await browser.newPage();
         await page.setViewport({ width, height });
-
-        recorder = new Recorder(page, {
-          fps: frameRate,
-          followNewTab,
-          videoFrame: { width, height },
-          aspectRatio: '16:9',
-          videoCrf: 18,
-          videoCodec: 'libx264',
-          videoPreset: 'ultrafast',
-          videoBitrate: 1000,
-          autopad: { color: 'black' },
-          recordDurationLimit: duration
-        });
-
-        const outputPath = path.join('/tmp', outputFileName);
-        await recorder.start(outputPath);
         await page.goto(url, { waitUntil: 'networkidle0' });
-        await new Promise((resolve) => setTimeout(resolve, duration * 1000));
-        await recorder.stop();
+
+        if (mode === 'video') {
+          // Video recording logic
+          const duration = this.getNodeParameter('duration', i) as number;
+          const frameRate = this.getNodeParameter('frameRate', i) as number;
+          const videoFormat = this.getNodeParameter('videoFormat', i) as string;
+          
+          let outputFileName = this.getNodeParameter('outputFileName', i) as string;
+          if (!outputFileName) {
+            outputFileName = `recording-${Date.now()}.${videoFormat}`;
+          } else if (!outputFileName.endsWith(`.${videoFormat}`)) {
+            outputFileName = `${outputFileName}.${videoFormat}`;
+          }
+
+          recorder = new Recorder(page, {
+            fps: frameRate,
+            followNewTab: true,
+            videoFrame: { width, height },
+            aspectRatio: '16:9',
+            videoCrf: 18,
+            videoCodec: 'libx264',
+            videoPreset: 'ultrafast',
+            videoBitrate: 1000,
+            autopad: { color: 'black' },
+            recordDurationLimit: duration
+          });
+
+          const outputPath = path.join('/tmp', outputFileName);
+          await recorder.start(outputPath);
+          await new Promise((resolve) => setTimeout(resolve, duration * 1000));
+          await recorder.stop();
+          
+          const videoData = fs.readFileSync(outputPath);
+          const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
+
+          returnData.push({
+            json: {
+              success: true,
+              mode: 'video',
+              file: outputFileName,
+              format: videoFormat,
+              duration,
+              width,
+              height,
+              frameRate,
+              url
+            },
+            binary: {
+              data: binaryData,
+            },
+          });
+
+        } else {
+          // Screenshot logic
+          const imageFormat = this.getNodeParameter('imageFormat', i) as string;
+          const fullPage = this.getNodeParameter('fullPage', i) as boolean;
+          
+          let outputFileName = this.getNodeParameter('outputFileName', i) as string;
+          if (!outputFileName) {
+            outputFileName = `screenshot-${Date.now()}.${imageFormat}`;
+          } else if (!outputFileName.endsWith(`.${imageFormat}`)) {
+            outputFileName = `${outputFileName}.${imageFormat}`;
+          }
+
+          const screenshotOptions = {
+            type: imageFormat as 'png' | 'jpeg' | 'webp',
+            fullPage,
+            quality: imageFormat === 'jpeg' ? 80 : undefined,
+          };
+
+          const screenshotBuffer = await page.screenshot(screenshotOptions);
+          const binaryData = await this.helpers.prepareBinaryData(screenshotBuffer, outputFileName);
+
+          returnData.push({
+            json: {
+              success: true,
+              mode: 'screenshot',
+              file: outputFileName,
+              format: imageFormat,
+              width,
+              height,
+              fullPage,
+              url
+            },
+            binary: {
+              data: binaryData,
+            },
+          });
+        }
+
         await browser.close();
         browser = null;
-        recorder = null;
-
-        const videoData = fs.readFileSync(outputPath);
-        const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
-
-        returnData.push({
-          json: {
-            success: true,
-            file: outputFileName,
-            format: videoFormat,
-            duration,
-            width,
-            height,
-            frameRate,
-            url
-          },
-          binary: {
-            data: binaryData,
-          },
-        });
 
       } catch (error) {
         await cleanup();
         throw new NodeOperationError(
           this.getNode(),
-          `Recording failed: ${(error as Error).message}`,
-          { description: 'Error occurred while recording website' }
+          `Operation failed: ${(error as Error).message}`,
+          { description: `Error occurred while ${mode === 'video' ? 'recording' : 'capturing'} website` }
         );
       }
     }
