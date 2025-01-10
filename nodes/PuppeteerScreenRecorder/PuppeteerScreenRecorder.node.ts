@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
+import type { Browser, PuppeteerLaunchOptions } from 'puppeteer';
 import puppeteer from 'puppeteer';
 import path from 'path';
 import fs from 'fs';
@@ -99,7 +100,7 @@ export class PuppeteerScreenRecorder implements INodeType {
     const returnData: INodeExecutionData[] = [];
 
     for (let i = 0; i < items.length; i++) {
-      let browser: puppeteer.Browser | null = null;
+      let browser: Browser | null = null;
       let recorder: Recorder | null = null;
 
       const cleanup = async () => {
@@ -136,16 +137,18 @@ export class PuppeteerScreenRecorder implements INodeType {
         Logger.debug(`[PuppeteerScreenRecorder] Parameters: url=${url}, width=${width}, height=${height}, duration=${duration}, frameRate=${frameRate}, outputFileName=${outputFileName}`);
 
         Logger.info('[PuppeteerScreenRecorder] Launching browser');
-        browser = await puppeteer.launch({
-          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-          headless: "new",
+        const launchOptions: PuppeteerLaunchOptions = {
+          executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+          headless: true as any,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-gpu'
           ],
-        });
+        };
+
+        browser = await puppeteer.launch(launchOptions);
 
         Logger.info('[PuppeteerScreenRecorder] Creating new page');
         const page = await browser.newPage();
@@ -200,13 +203,14 @@ export class PuppeteerScreenRecorder implements INodeType {
 
       } catch (error) {
         Logger.error('[PuppeteerScreenRecorder] Error details:', {
-          error: error.message,
-          stack: error.stack,
-          executable: process.env.PUPPETEER_EXECUTABLE_PATH,
-          exists: fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH),
+          error: (error as Error).message || 'Unknown error',
+          stack: (error as Error).stack || 'No stack trace',
+          executable: process.env.PUPPETEER_EXECUTABLE_PATH || 'Not set',
+          exists: process.env.PUPPETEER_EXECUTABLE_PATH ? 
+            fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH) : 
+            false,
         });
         await cleanup();
-        Logger.error(`[PuppeteerScreenRecorder] Error processing item ${i}: ${error}`);
         throw error;
       }
     }
