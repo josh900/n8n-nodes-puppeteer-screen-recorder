@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-puppeteer-screen-recorder",
-  "version": "5.0.24",
+  "version": "5.0.25",
   "description": "n8n node for recording websites using Puppeteer and puppeteer-screen-recorder",
   "main": "index.js",
   "scripts": {
@@ -26,7 +26,6 @@
   "dependencies": {
     "@types/node": "^20.12.12",
     "fs": "^0.0.1-security",
-    "n8n-core": "^1.14.1",
     "path": "^0.12.7",
     "puppeteer": "^22.5.0",
     "puppeteer-screen-recorder": "^3.0.6"
@@ -36,7 +35,8 @@
     "@typescript-eslint/parser": "^7.10.0",
     "eslint-plugin-n8n-nodes-base": "^1.0.43",
     "gulp": "^4.0.2",
-    "n8n-workflow": "^0.125.0",
+    "n8n-workflow": "^1.17.0",
+    "n8n-core": "^1.14.1",
     "prettier": "^3.2.5",
     "typescript": "^5.4.2"
   },
