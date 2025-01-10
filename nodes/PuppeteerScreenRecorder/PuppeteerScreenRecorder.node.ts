@@ -211,8 +211,17 @@ export class PuppeteerScreenRecorder implements INodeType {
 
         browser = await puppeteer.launch(launchOptions);
         const page = await browser.newPage();
+        
+        // Disable navigation timeout globally
+        await page.setDefaultNavigationTimeout(0);
+        
         await page.setViewport({ width, height });
-        await page.goto(url, { waitUntil: 'networkidle0' });
+        
+        // Add timeout: 0 to page.goto() options
+        await page.goto(url, { 
+          waitUntil: 'networkidle0',
+          timeout: 0 
+        });
 
         if (initialDelay > 0) {
           await new Promise((resolve) => setTimeout(resolve, initialDelay * 1000));
