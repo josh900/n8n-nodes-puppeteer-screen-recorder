@@ -233,36 +233,37 @@ export class PuppeteerScreenRecorder implements INodeType {
           throw new NodeOperationError(this.getNode(), 'Invalid scale factor');
         }
 
-        // Set page scale using transform
-        await page.evaluate((scale) => {
-          document.body.style.transform = `scale(${scale})`;
-          document.body.style.transformOrigin = '0 0';
-          // Add width adjustment to prevent content cutoff
-          document.body.style.width = `${100/scale}%`;
+        // Set initial viewport size
+        await page.setViewport({
+          width,
+          height,
+        });
+
+        // Apply scaling using CSS transform
+        await page.evaluate(async (scale) => {
+          // Add a wrapper div around the body content
+          const wrapper = document.createElement('div');
+          wrapper.id = 'puppeteer-wrapper';
+          // Move all body children to wrapper
+          while (document.body.firstChild) {
+            wrapper.appendChild(document.body.firstChild);
+          }
+          document.body.appendChild(wrapper);
+
+          // Style the body and wrapper
+          document.body.style.margin = '0';
+          document.body.style.padding = '0';
+          document.body.style.overflow = 'hidden';
+          
+          wrapper.style.position = 'absolute';
+          wrapper.style.transformOrigin = 'top left';
+          wrapper.style.transform = `scale(${scale})`;
+          wrapper.style.width = `${100/scale}%`;
+          wrapper.style.height = `${100/scale}%`;
         }, scaleFactor);
 
-        // Wait for scaling to take effect using standard setTimeout
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Adjust viewport size based on scale
-        const adjustedWidth = Math.round(width * scaleFactor);
-        const adjustedHeight = Math.round(height * scaleFactor);
-        await page.setViewport({
-          width: adjustedWidth,
-          height: adjustedHeight,
-        });
-
-        // Add CSS to ensure proper scaling
-        await page.addStyleTag({
-          content: `
-            body {
-              margin: 0;
-              padding: 0;
-              transform-origin: 0 0;
-              min-height: 100vh;
-            }
-          `
-        });
+        // Wait for any animations/transitions to complete
+        await page.waitForTimeout(1000);
 
         if (mode === 'video') {
           // Video recording logic
@@ -280,7 +281,10 @@ export class PuppeteerScreenRecorder implements INodeType {
           recorder = new Recorder(page, {
             fps: frameRate,
             followNewTab: true,
-            videoFrame: { width, height },
+            videoFrame: {
+              width,
+              height,
+            },
             aspectRatio: '16:9',
             videoCrf: 18,
             videoCodec: 'libx264',
@@ -305,8 +309,8 @@ export class PuppeteerScreenRecorder implements INodeType {
               file: outputFileName,
               format: videoFormat,
               duration,
-              width: adjustedWidth,
-              height: adjustedHeight,
+              width,
+              height,
               frameRate,
               initialDelay,
               scale: scaleInput,
@@ -344,10 +348,9 @@ export class PuppeteerScreenRecorder implements INodeType {
               mode: 'screenshot',
               file: outputFileName,
               format: imageFormat,
-              width: adjustedWidth,
-              height: adjustedHeight,
+              width,
+              height,
               fullPage,
-              initialDelay,
               scale: scaleInput,
               url
             },
