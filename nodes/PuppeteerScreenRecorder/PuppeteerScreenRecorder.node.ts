@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
 import type { Browser, PuppeteerLaunchOptions } from 'puppeteer';
 import puppeteer from 'puppeteer';
@@ -183,7 +184,10 @@ export class PuppeteerScreenRecorder implements INodeType {
 
       } catch (error) {
         await cleanup();
-        throw new Error(`Recording failed: ${(error as Error).message}`);
+        throw new NodeOperationError(this.getNode(), `Recording failed: ${(error as Error).message}`, {
+          itemIndex: i,
+          description: 'Failed to record website',
+        });
       }
     }
 
