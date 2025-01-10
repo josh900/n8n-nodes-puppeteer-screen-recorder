@@ -220,7 +220,7 @@ export class PuppeteerScreenRecorder implements INodeType {
 
         const scaleInput = this.getNodeParameter('scale', i) as string;
         
-        // Convert scale input to decimal (handle both percentage and decimal formats)
+        // Convert scale input to decimal
         let scaleFactor = 1;
         if (scaleInput.endsWith('%')) {
           scaleFactor = parseInt(scaleInput.replace('%', ''), 10) / 100;
@@ -233,16 +233,16 @@ export class PuppeteerScreenRecorder implements INodeType {
           throw new NodeOperationError(this.getNode(), 'Invalid scale factor');
         }
 
-        // Set page scale using zoom
+        // Set page scale using transform
         await page.evaluate((scale) => {
-          document.body.style.zoom = scale;
-          // For Firefox compatibility
           document.body.style.transform = `scale(${scale})`;
           document.body.style.transformOrigin = '0 0';
+          // Add width adjustment to prevent content cutoff
+          document.body.style.width = `${100/scale}%`;
         }, scaleFactor);
 
-        // Wait for scaling to take effect
-        await page.waitForTimeout(500);
+        // Wait for scaling to take effect using standard setTimeout
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Adjust viewport size based on scale
         const adjustedWidth = Math.round(width * scaleFactor);
@@ -250,6 +250,18 @@ export class PuppeteerScreenRecorder implements INodeType {
         await page.setViewport({
           width: adjustedWidth,
           height: adjustedHeight,
+        });
+
+        // Add CSS to ensure proper scaling
+        await page.addStyleTag({
+          content: `
+            body {
+              margin: 0;
+              padding: 0;
+              transform-origin: 0 0;
+              min-height: 100vh;
+            }
+          `
         });
 
         if (mode === 'video') {
