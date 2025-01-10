@@ -13,7 +13,7 @@ export class PuppeteerScreenRecorder implements INodeType {
     name: 'puppeteerScreenRecorder',
     icon: 'file:puppeteer.svg',
     group: ['transform'],
-    version: 1,
+    version: 2,
     description: 'Record a website using Puppeteer and puppeteer-screen-recorder',
     defaults: {
       name: 'Puppeteer Screen Recorder',
