@@ -212,21 +212,15 @@ export class PuppeteerScreenRecorder implements INodeType {
         browser = await puppeteer.launch(launchOptions);
         const page = await browser.newPage();
         
-        // Disable navigation timeout globally
-        await page.setDefaultNavigationTimeout(0);
-        
-        await page.setViewport({ width, height });
-        
-        // Add timeout: 0 to page.goto() options
+        // Set a reasonable timeout and wait only for DOM content
         await page.goto(url, { 
-          waitUntil: 'networkidle0',
-          timeout: 0 
+          waitUntil: 'domcontentloaded',
+          timeout: 30000  // 30 second timeout
         });
 
-        if (initialDelay > 0) {
-          await new Promise((resolve) => setTimeout(resolve, initialDelay * 1000));
-        }
+        await page.setViewport({ width, height });
 
+        // Apply scaling if specified
         const scaleInput = this.getNodeParameter('scale', i) as string;
         
         // Convert scale input to decimal
@@ -273,6 +267,11 @@ export class PuppeteerScreenRecorder implements INodeType {
 
         // Wait for any animations/transitions to complete
         await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // User-specified initial delay before recording
+        if (initialDelay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, initialDelay * 1000));
+        }
 
         if (mode === 'video') {
           // Video recording logic
