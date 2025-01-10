@@ -149,7 +149,14 @@ export class PuppeteerScreenRecorder implements INodeType {
         type: 'boolean',
         default: true,
         description: 'Whether to follow and record new tabs opened during recording.',
-      }
+      },
+      {
+        displayName: 'Initial Delay',
+        name: 'initialDelay',
+        type: 'number',
+        default: 0,
+        description: 'Time to wait in seconds before starting the capture or recording',
+      },
     ],
   };
 
@@ -181,6 +188,7 @@ export class PuppeteerScreenRecorder implements INodeType {
         const url = this.getNodeParameter('url', i) as string;
         const width = this.getNodeParameter('width', i) as number;
         const height = this.getNodeParameter('height', i) as number;
+        const initialDelay = this.getNodeParameter('initialDelay', i) as number;
 
         const launchOptions: PuppeteerLaunchOptions = {
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
@@ -197,6 +205,10 @@ export class PuppeteerScreenRecorder implements INodeType {
         const page = await browser.newPage();
         await page.setViewport({ width, height });
         await page.goto(url, { waitUntil: 'networkidle0' });
+
+        if (initialDelay > 0) {
+          await new Promise((resolve) => setTimeout(resolve, initialDelay * 1000));
+        }
 
         if (mode === 'video') {
           // Video recording logic
@@ -242,6 +254,7 @@ export class PuppeteerScreenRecorder implements INodeType {
               width,
               height,
               frameRate,
+              initialDelay,
               url
             },
             binary: {
@@ -279,6 +292,7 @@ export class PuppeteerScreenRecorder implements INodeType {
               width,
               height,
               fullPage,
+              initialDelay,
               url
             },
             binary: {
