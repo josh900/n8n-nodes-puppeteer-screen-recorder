@@ -64,6 +64,33 @@ export class PuppeteerScreenRecorder implements INodeType {
         default: 'recording.mp4',
         description: 'The name of the output file',
       },
+      {
+        displayName: 'Video Format',
+        name: 'videoFormat',
+        type: 'options',
+        default: 'mp4',
+        options: [
+          { name: 'MP4', value: 'mp4' },
+          { name: 'AVI', value: 'avi' },
+          { name: 'WEBM', value: 'webm' },
+          { name: 'MOV', value: 'mov' }
+        ],
+        description: 'The format of the output video file',
+      },
+      {
+        displayName: 'Video Quality',
+        name: 'videoQuality',
+        type: 'number',
+        default: 80,
+        description: 'The quality of the video (1-100)',
+      },
+      {
+        displayName: 'Follow New Tabs',
+        name: 'followNewTab',
+        type: 'boolean',
+        default: true,
+        description: 'Whether to follow and record new tabs opened during recording',
+      }
     ],
   };
 
@@ -98,15 +125,26 @@ export class PuppeteerScreenRecorder implements INodeType {
         const height = this.getNodeParameter('height', i) as number;
         const duration = this.getNodeParameter('duration', i) as number;
         const frameRate = this.getNodeParameter('frameRate', i) as number;
-        const outputFileName = this.getNodeParameter('outputFileName', i) as string;
+        const videoFormat = this.getNodeParameter('videoFormat', i) as string;
+        const videoQuality = this.getNodeParameter('videoQuality', i) as number;
+        const followNewTab = this.getNodeParameter('followNewTab', i) as boolean;
+
+        const outputFileName = `${this.getNodeParameter('outputFileName', i)}`.endsWith(`.${videoFormat}`) 
+          ? this.getNodeParameter('outputFileName', i) as string
+          : `${this.getNodeParameter('outputFileName', i)}.${videoFormat}`;
 
         Logger.debug(`[PuppeteerScreenRecorder] Parameters: url=${url}, width=${width}, height=${height}, duration=${duration}, frameRate=${frameRate}, outputFileName=${outputFileName}`);
 
         Logger.info('[PuppeteerScreenRecorder] Launching browser');
         browser = await puppeteer.launch({
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          headless: "new",
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu'
+          ],
         });
 
         Logger.info('[PuppeteerScreenRecorder] Creating new page');
@@ -116,7 +154,15 @@ export class PuppeteerScreenRecorder implements INodeType {
         Logger.info('[PuppeteerScreenRecorder] Initializing recorder');
         recorder = new Recorder(page, {
           fps: frameRate,
+          followNewTab,
           videoFrame: { width, height },
+          aspectRatio: '16:9',
+          videoCrf: 18,
+          videoCodec: 'libx264',
+          videoPreset: 'ultrafast',
+          videoBitrate: 1000,
+          autopad: { color: 'black' },
+          recordDurationLimit: duration
         });
 
         const outputPath = path.join('/tmp', outputFileName);
@@ -153,6 +199,12 @@ export class PuppeteerScreenRecorder implements INodeType {
         Logger.info(`[PuppeteerScreenRecorder] Successfully processed item ${i}`);
 
       } catch (error) {
+        Logger.error('[PuppeteerScreenRecorder] Error details:', {
+          error: error.message,
+          stack: error.stack,
+          executable: process.env.PUPPETEER_EXECUTABLE_PATH,
+          exists: fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH),
+        });
         await cleanup();
         Logger.error(`[PuppeteerScreenRecorder] Error processing item ${i}: ${error}`);
         throw error;
