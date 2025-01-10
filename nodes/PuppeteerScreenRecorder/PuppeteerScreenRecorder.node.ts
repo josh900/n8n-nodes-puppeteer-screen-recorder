@@ -263,7 +263,7 @@ export class PuppeteerScreenRecorder implements INodeType {
         }, scaleFactor);
 
         // Wait for any animations/transitions to complete
-        await page.waitForTimeout(1000);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         if (mode === 'video') {
           // Video recording logic
