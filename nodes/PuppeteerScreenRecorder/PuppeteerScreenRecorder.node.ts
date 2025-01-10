@@ -2,7 +2,6 @@ import {
   IExecuteFunctions,
   NodeApiError,
   NodeOperationError,
-  NodeConnectionType,
 } from 'n8n-workflow';
 import { 
   INodeExecutionData, 
@@ -26,8 +25,8 @@ export class PuppeteerScreenRecorder implements INodeType {
     defaults: {
       name: 'Puppeteer Screen Recorder',
     },
-    inputs: [NodeConnectionType.Main],
-    outputs: [NodeConnectionType.Main],
+    inputs: ['main'] as const,
+    outputs: ['main'] as const,
     properties: [
       {
         displayName: 'URL',
