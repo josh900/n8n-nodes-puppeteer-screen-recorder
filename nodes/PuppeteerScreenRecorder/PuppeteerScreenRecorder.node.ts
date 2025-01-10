@@ -174,7 +174,13 @@ export class PuppeteerScreenRecorder implements INodeType {
         returnData.push({
           json: {
             success: true,
-            file: outputFileName
+            file: outputFileName,
+            format: videoFormat,
+            duration,
+            width,
+            height,
+            frameRate,
+            url
           },
           binary: {
             data: binaryData,
