@@ -160,6 +160,7 @@ export class PuppeteerScreenRecorder implements INodeType {
     for (let i = 0; i < items.length; i++) {
       let browser: Browser | null = null;
       let recorder: Recorder | null = null;
+      const mode = this.getNodeParameter('mode', i) as string;
 
       const cleanup = async () => {
         try {
@@ -177,7 +178,6 @@ export class PuppeteerScreenRecorder implements INodeType {
       };
 
       try {
-        const mode = this.getNodeParameter('mode', i) as string;
         const url = this.getNodeParameter('url', i) as string;
         const width = this.getNodeParameter('width', i) as number;
         const height = this.getNodeParameter('height', i) as number;
