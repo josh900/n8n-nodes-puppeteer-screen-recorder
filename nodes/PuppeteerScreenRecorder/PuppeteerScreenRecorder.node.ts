@@ -38,7 +38,7 @@ export class PuppeteerScreenRecorder implements INodeType {
           { name: 'Video Recording', value: 'video' },
           { name: 'Screenshot', value: 'screenshot' }
         ],
-        description: 'Whether to record a video or take a screenshot.',
+        description: 'Whether to record a video or take a screenshot',
       },
       {
         displayName: 'URL',
@@ -47,21 +47,21 @@ export class PuppeteerScreenRecorder implements INodeType {
         default: '',
         required: true,
         placeholder: 'https://example.com',
-        description: 'The URL of the website to record/capture.',
+        description: 'The URL of the website to record/capture',
       },
       {
         displayName: 'Width',
         name: 'width',
         type: 'number',
         default: 1280,
-        description: 'The width of the viewport.',
+        description: 'The width of the viewport',
       },
       {
         displayName: 'Height', 
         name: 'height',
         type: 'number',
         default: 720,
-        description: 'The height of the viewport.',
+        description: 'The height of the viewport',
       },
       {
         displayName: 'Duration',
@@ -73,7 +73,7 @@ export class PuppeteerScreenRecorder implements INodeType {
           }
         },
         default: 5,
-        description: 'The duration of the recording in seconds.',
+        description: 'The duration of the recording in seconds',
       },
       {
         displayName: 'Frame Rate',
@@ -85,7 +85,7 @@ export class PuppeteerScreenRecorder implements INodeType {
           }
         },
         default: 25,
-        description: 'The frame rate of the recording.',
+        description: 'The frame rate of the recording',
       },
       {
         displayName: 'Image Format',
@@ -102,7 +102,7 @@ export class PuppeteerScreenRecorder implements INodeType {
           { name: 'WEBP', value: 'webp' }
         ],
         default: 'png',
-        description: 'The format of the screenshot image.',
+        description: 'The format of the screenshot image',
       },
       {
         displayName: 'Full Page',
@@ -114,14 +114,14 @@ export class PuppeteerScreenRecorder implements INodeType {
           }
         },
         default: false,
-        description: 'Whether to take a screenshot of the full scrollable page.',
+        description: 'Whether to take a screenshot of the full scrollable page',
       },
       {
         displayName: 'Output File Name',
         name: 'outputFileName',
         type: 'string',
         default: '',
-        description: 'The name of the output file. If empty, will use timestamp.',
+        description: 'The name of the output file. If empty, will use timestamp',
       },
       {
         displayName: 'Video Format',
@@ -134,21 +134,21 @@ export class PuppeteerScreenRecorder implements INodeType {
           { name: 'WEBM', value: 'webm' },
           { name: 'MOV', value: 'mov' }
         ],
-        description: 'The format of the output video file.',
+        description: 'The format of the output video file',
       },
       {
         displayName: 'Video Quality',
         name: 'videoQuality',
         type: 'number',
         default: 80,
-        description: 'The quality of the video (1-100).',
+        description: 'The quality of the video (1-100)',
       },
       {
         displayName: 'Follow New Tabs',
         name: 'followNewTab',
         type: 'boolean',
         default: true,
-        description: 'Whether to follow and record new tabs opened during recording.',
+        description: 'Whether to follow and record new tabs opened during recording',
       }
     ],
   };
