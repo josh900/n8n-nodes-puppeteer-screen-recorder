@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-puppeteer-screen-recorder",
-  "version": "5.0.21",
+  "version": "5.0.22",
   "description": "n8n node for recording websites using Puppeteer and puppeteer-screen-recorder",
   "main": "index.js",
   "scripts": {

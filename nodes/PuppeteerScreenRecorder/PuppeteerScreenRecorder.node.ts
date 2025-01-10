@@ -1,6 +1,5 @@
 import { IExecuteFunctions } from 'n8n-workflow';
 import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
 import type { Browser, PuppeteerLaunchOptions } from 'puppeteer';
 import puppeteer from 'puppeteer';
@@ -114,13 +113,11 @@ export class PuppeteerScreenRecorder implements INodeType {
             browser = null;
           }
         } catch (error) {
-          Logger.error(`[PuppeteerScreenRecorder] Cleanup error: ${error}`);
+          console.error('Cleanup error:', error);
         }
       };
 
       try {
-        Logger.info(`[PuppeteerScreenRecorder] Starting execution for item ${i}`);
-
         const url = this.getNodeParameter('url', i) as string;
         const width = this.getNodeParameter('width', i) as number;
         const height = this.getNodeParameter('height', i) as number;
@@ -134,9 +131,6 @@ export class PuppeteerScreenRecorder implements INodeType {
           ? this.getNodeParameter('outputFileName', i) as string
           : `${this.getNodeParameter('outputFileName', i)}.${videoFormat}`;
 
-        Logger.debug(`[PuppeteerScreenRecorder] Parameters: url=${url}, width=${width}, height=${height}, duration=${duration}, frameRate=${frameRate}, outputFileName=${outputFileName}`);
-
-        Logger.info('[PuppeteerScreenRecorder] Launching browser');
         const launchOptions: PuppeteerLaunchOptions = {
           executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
           headless: true as any,
@@ -149,12 +143,9 @@ export class PuppeteerScreenRecorder implements INodeType {
         };
 
         browser = await puppeteer.launch(launchOptions);
-
-        Logger.info('[PuppeteerScreenRecorder] Creating new page');
         const page = await browser.newPage();
         await page.setViewport({ width, height });
 
-        Logger.info('[PuppeteerScreenRecorder] Initializing recorder');
         recorder = new Recorder(page, {
           fps: frameRate,
           followNewTab,
@@ -169,49 +160,30 @@ export class PuppeteerScreenRecorder implements INodeType {
         });
 
         const outputPath = path.join('/tmp', outputFileName);
-        Logger.info(`[PuppeteerScreenRecorder] Starting recording to ${outputPath}`);
         await recorder.start(outputPath);
-
-        Logger.info(`[PuppeteerScreenRecorder] Navigating to ${url}`);
         await page.goto(url, { waitUntil: 'networkidle0' });
-
-        Logger.info(`[PuppeteerScreenRecorder] Waiting for ${duration} seconds`);
         await new Promise((resolve) => setTimeout(resolve, duration * 1000));
-
-        Logger.info('[PuppeteerScreenRecorder] Stopping recording');
         await recorder.stop();
-
-        Logger.info('[PuppeteerScreenRecorder] Closing browser');
         await browser.close();
         browser = null;
         recorder = null;
 
-        Logger.info('[PuppeteerScreenRecorder] Reading recorded file');
         const videoData = fs.readFileSync(outputPath);
-        
-        Logger.info('[PuppeteerScreenRecorder] Preparing binary data');
         const binaryData = await this.helpers.prepareBinaryData(videoData, outputFileName);
 
         returnData.push({
-          json: {},
+          json: {
+            success: true,
+            file: outputFileName
+          },
           binary: {
             data: binaryData,
           },
         });
 
-        Logger.info(`[PuppeteerScreenRecorder] Successfully processed item ${i}`);
-
       } catch (error) {
-        Logger.error('[PuppeteerScreenRecorder] Error details:', {
-          error: (error as Error).message || 'Unknown error',
-          stack: (error as Error).stack || 'No stack trace',
-          executable: process.env.PUPPETEER_EXECUTABLE_PATH || 'Not set',
-          exists: process.env.PUPPETEER_EXECUTABLE_PATH ? 
-            fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH) : 
-            false,
-        });
         await cleanup();
-        throw error;
+        throw new Error(`Recording failed: ${(error as Error).message}`);
       }
     }
 
