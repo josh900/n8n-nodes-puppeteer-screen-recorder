@@ -1,5 +1,10 @@
 import { IExecuteFunctions } from 'n8n-workflow';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { 
+  INodeExecutionData, 
+  INodeType, 
+  INodeTypeDescription,
+  NodeConnectionType,
+} from 'n8n-workflow';
 import { PuppeteerScreenRecorder as Recorder } from 'puppeteer-screen-recorder';
 import type { Browser, PuppeteerLaunchOptions } from 'puppeteer';
 import puppeteer from 'puppeteer';
@@ -17,8 +22,12 @@ export class PuppeteerScreenRecorder implements INodeType {
     defaults: {
       name: 'Puppeteer Screen Recorder',
     },
-    inputs: ['main'],
-    outputs: ['main'],
+    inputs: [{
+      type: NodeConnectionType.Main,
+    }],
+    outputs: [{
+      type: NodeConnectionType.Main,
+    }],
     properties: [
       {
         displayName: 'URL',
