@@ -157,6 +157,14 @@ export class PuppeteerScreenRecorder implements INodeType {
         default: 0,
         description: 'Time to wait in seconds before starting the capture or recording',
       },
+      {
+        displayName: 'Scale',
+        name: 'scale',
+        type: 'string',
+        default: '100%',
+        description: 'Scale factor for the browser (e.g. 100%, 125%, 75% or 1, 1.25, 0.75)',
+        placeholder: '100%',
+      },
     ],
   };
 
@@ -210,6 +218,40 @@ export class PuppeteerScreenRecorder implements INodeType {
           await new Promise((resolve) => setTimeout(resolve, initialDelay * 1000));
         }
 
+        const scaleInput = this.getNodeParameter('scale', i) as string;
+        
+        // Convert scale input to decimal (handle both percentage and decimal formats)
+        let scaleFactor = 1;
+        if (scaleInput.endsWith('%')) {
+          scaleFactor = parseInt(scaleInput.replace('%', ''), 10) / 100;
+        } else {
+          scaleFactor = parseFloat(scaleInput);
+        }
+
+        // Validate scale factor
+        if (isNaN(scaleFactor) || scaleFactor <= 0) {
+          throw new NodeOperationError(this.getNode(), 'Invalid scale factor');
+        }
+
+        // Set page scale using zoom
+        await page.evaluate((scale) => {
+          document.body.style.zoom = scale;
+          // For Firefox compatibility
+          document.body.style.transform = `scale(${scale})`;
+          document.body.style.transformOrigin = '0 0';
+        }, scaleFactor);
+
+        // Wait for scaling to take effect
+        await page.waitForTimeout(500);
+
+        // Adjust viewport size based on scale
+        const adjustedWidth = Math.round(width * scaleFactor);
+        const adjustedHeight = Math.round(height * scaleFactor);
+        await page.setViewport({
+          width: adjustedWidth,
+          height: adjustedHeight,
+        });
+
         if (mode === 'video') {
           // Video recording logic
           const duration = this.getNodeParameter('duration', i) as number;
@@ -251,10 +293,11 @@ export class PuppeteerScreenRecorder implements INodeType {
               file: outputFileName,
               format: videoFormat,
               duration,
-              width,
-              height,
+              width: adjustedWidth,
+              height: adjustedHeight,
               frameRate,
               initialDelay,
+              scale: scaleInput,
               url
             },
             binary: {
@@ -289,10 +332,11 @@ export class PuppeteerScreenRecorder implements INodeType {
               mode: 'screenshot',
               file: outputFileName,
               format: imageFormat,
-              width,
-              height,
+              width: adjustedWidth,
+              height: adjustedHeight,
               fullPage,
               initialDelay,
+              scale: scaleInput,
               url
             },
             binary: {
